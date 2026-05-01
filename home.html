@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wumpus Logic Agent — Home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne+Mono&family=Space+Grotesk:wght@300;500;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #070a05;
+      --bg2: #0b0f08;
+      --panel: rgba(14, 19, 9, 0.9);
+      --border: #2a3d18;
+      --border-hi: #4a7a22;
+      --amber: #ffb300;
+      --amber-glow: rgba(255, 179, 0, 0.35);
+      --lime: #a8ff3e;
+      --lime-glow: rgba(168, 255, 62, 0.3);
+      --toxic: #39ff14;
+      --danger: #ff4520;
+      --purple: #b030ff;
+      --gold: #ffe066;
+      --text: #d4e8b0;
+      --text-dim: #5a7840;
+      --text-muted: #334422;
+      --display: 'Bebas Neue', sans-serif;
+      --mono: 'Syne Mono', monospace;
+      --body: 'Space Grotesk', sans-serif;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow-x: hidden
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+      min-height: 100vh
+    }
+
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: linear-gradient(rgba(168, 255, 62, .04)1px, transparent 1px), linear-gradient(90deg, rgba(168, 255, 62, .04)1px, transparent 1px);
+      background-size: 40px 40px;
+      animation: gridDrift 20s linear infinite;
+      pointer-events: none;
+      z-index: 0
+    }
+
+    @keyframes gridDrift {
+      from {
+        background-position: 0 0
+      }
+
+      to {
+        background-position: 40px 40px
+      }
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse 600px 500px at 20% 30%, rgba(168, 255, 62, .06) 0%, transparent 60%),
+        radial-gradient(ellipse 500px 600px at 80% 70%, rgba(255, 179, 0, .07) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+      animation: blobPulse 8s ease-in-out infinite alternate
+    }
+
+    @keyframes blobPulse {
+      from {
+        opacity: .6
+      }
+
+      to {
+        opacity: 1.2
+      }
+    }
+
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9999;
+      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0, 0, 0, .07)3px, rgba(0, 0, 0, .07)4px)
+    }
+
+    /* NAV */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      height: 64px;
+      background: rgba(7, 10, 5, .85);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      animation: fadeDown .6s ease
+    }
+
+    @keyframes fadeDown {
+      from {
+        opacity: 0;
+        transform: translateY(-16px)
+      }
+
+      to {
+        opacity: 1;
+        transform: none
+      }
+    }
+
+    .nav-logo {
+      font-family: var(--display);
+      font-size: 22px;
+      letter-spacing: 4px;
+      color: var(--amber);
+      text-shadow: 0 0 18px var(--amber-glow)
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      list-style: none
+    }
+
+    .nav-links a {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      text-decoration: none;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      transition: color .2s
+    }
+
+    .nav-links a:hover {
+      color: var(--lime)
+    }
+
+    /* HERO */
+    .hero {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 24px 40px
+    }
+
+    .hero-badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--lime);
+      border: 1px solid var(--border-hi);
+      padding: 5px 18px;
+      border-radius: 30px;
+      background: rgba(168, 255, 62, .08);
+      margin-bottom: 28px;
+      animation: fadeUp .8s .2s ease both
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px)
+      }
+
+      to {
+        opacity: 1;
+        transform: none
+      }
+    }
+
+    .hero-hex {
+      width: 90px;
+      height: 90px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      animation: fadeUp .8s .1s ease both
+    }
+
+    .hero-hex svg {
+      position: absolute;
+      inset: 0;
+      animation: hexSpin 8s linear infinite
+    }
+
+    @keyframes hexSpin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .hero-hex-inner {
+      font-size: 40px;
+      position: relative;
+      z-index: 1;
+      filter: drop-shadow(0 0 16px var(--amber-glow))
+    }
+
+    .hero-title {
+      font-family: var(--display);
+      font-size: clamp(48px, 8vw, 96px);
+      letter-spacing: 8px;
+      color: var(--amber);
+      line-height: .9;
+      text-shadow: 0 0 40px var(--amber-glow), 0 0 80px rgba(255, 179, 0, .2);
+      animation: fadeUp .8s .3s ease both
+    }
+
+    .hero-sub {
+      font-family: var(--mono);
+      font-size: clamp(9px, 1.5vw, 13px);
+      letter-spacing: 4px;
+      color: var(--text-dim);
+      margin: 18px 0 40px;
+      animation: fadeUp .8s .4s ease both
+    }
+
+    .btn-launch {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--display);
+      font-size: 20px;
+      letter-spacing: 3px;
+      padding: 16px 52px;
+      border: 2px solid var(--amber);
+      border-radius: 6px;
+      color: var(--amber);
+      text-decoration: none;
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all .25s cubic-bezier(.4, 0, .2, 1);
+      animation: fadeUp .8s .5s ease both
+    }
+
+    .btn-launch::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--amber);
+      opacity: 0;
+      transition: opacity .25s
+    }
+
+    .btn-launch:hover {
+      color: var(--bg);
+      box-shadow: 0 0 40px var(--amber-glow)
+    }
+
+    .btn-launch:hover::before {
+      opacity: 1
+    }
+
+    .btn-launch span {
+      position: relative;
+      z-index: 1
+    }
+
+    .btn-launch:active {
+      transform: scale(.97)
+    }
+
+    .hero-scroll {
+      margin-top: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      animation: fadeUp .8s .7s ease both
+    }
+
+    .hero-scroll span {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 2px
+    }
+
+    .hero-scroll-line {
+      width: 1px;
+      height: 40px;
+      background: linear-gradient(to bottom, var(--border-hi), transparent);
+      animation: scrollPulse 2s ease-in-out infinite
+    }
+
+    @keyframes scrollPulse {
+
+      0%,
+      100% {
+        opacity: .4
+      }
+
+      50% {
+        opacity: 1
+      }
+    }
+
+    /* FEATURES */
+    .section {
+      position: relative;
+      z-index: 1;
+      padding: 80px 40px;
+      max-width: 1100px;
+      margin: 0 auto
+    }
+
+    .section-title {
+      font-family: var(--display);
+      font-size: clamp(28px, 4vw, 48px);
+      letter-spacing: 5px;
+      color: var(--lime);
+      text-align: center;
+      margin-bottom: 12px;
+      text-shadow: 0 0 24px var(--lime-glow)
+    }
+
+    .section-divider {
+      width: 80px;
+      height: 2px;
+      background: linear-gradient(to right, transparent, var(--amber), transparent);
+      margin: 0 auto 52px
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px
+    }
+
+    .feat-card {
+      padding: 28px 24px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      backdrop-filter: blur(12px);
+      position: relative;
+      overflow: hidden;
+      transition: transform .2s, border-color .2s
+    }
+
+    .feat-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-hi)
+    }
+
+    .feat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(to right, transparent, var(--lime), transparent);
+      opacity: .5
+    }
+
+    .feat-icon {
+      font-size: 32px;
+      margin-bottom: 14px
+    }
+
+    .feat-title {
+      font-family: var(--display);
+      font-size: 18px;
+      letter-spacing: 3px;
+      color: var(--amber);
+      margin-bottom: 8px
+    }
+
+    .feat-desc {
+      font-family: var(--body);
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.7
+    }
+
+    /* HOW TO PLAY */
+    .howto-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px
+    }
+
+    .step-card {
+      padding: 22px 20px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: rgba(14, 19, 9, .7);
+      display: flex;
+      gap: 16px;
+      align-items: flex-start
+    }
+
+    .step-num {
+      font-family: var(--display);
+      font-size: 36px;
+      color: var(--border-hi);
+      line-height: 1;
+      flex-shrink: 0
+    }
+
+    .step-body {
+      flex: 1
+    }
+
+    .step-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: var(--lime);
+      text-transform: uppercase;
+      margin-bottom: 5px
+    }
+
+    .step-desc {
+      font-size: 12px;
+      color: var(--text-dim);
+      line-height: 1.65
+    }
+
+    kbd {
+      display: inline-block;
+      padding: 1px 6px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: var(--bg2);
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-dim)
+    }
+
+    /* CTA */
+    .cta {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 80px 24px 120px
+    }
+
+    .cta-title {
+      font-family: var(--display);
+      font-size: clamp(32px, 5vw, 60px);
+      letter-spacing: 5px;
+      color: var(--text);
+      margin-bottom: 16px
+    }
+
+    .cta-title span {
+      color: var(--amber);
+      text-shadow: 0 0 30px var(--amber-glow)
+    }
+
+    .cta-sub {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+      margin-bottom: 40px
+    }
+
+    /* STATUS */
+    #server-status {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      margin-top: 24px;
+      color: var(--text-muted)
+    }
+
+    #server-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #444;
+      margin-right: 8px;
+      transition: background .4s
+    }
+
+    #server-dot.ok {
+      background: var(--toxic);
+      box-shadow: 0 0 8px var(--toxic)
+    }
+
+    #server-dot.err {
+      background: var(--danger)
+    }
+
+    /* MUSIC PLAYER WIDGET */
+    .music-player {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      z-index: 500;
+      background: rgba(14, 19, 9, 0.92);
+      border: 1px solid var(--border-hi);
+      border-radius: 50px;
+      padding: 10px 18px 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 0 30px rgba(168, 255, 62, .12), 0 8px 32px rgba(0, 0, 0, .5);
+      transition: all .3s cubic-bezier(.4, 0, .2, 1);
+      cursor: default;
+      animation: fadeUp .8s 1s ease both
+    }
+
+    .music-player:hover {
+      box-shadow: 0 0 40px rgba(168, 255, 62, .22), 0 12px 40px rgba(0, 0, 0, .6)
+    }
+
+    .mp-disc {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: conic-gradient(var(--amber), var(--lime), var(--amber));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      animation: discSpin 3s linear infinite;
+      flex-shrink: 0
+    }
+
+    .mp-disc.paused {
+      animation-play-state: paused
+    }
+
+    @keyframes discSpin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .mp-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0
+    }
+
+    .mp-title {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--lime);
+      letter-spacing: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 160px
+    }
+
+    .mp-artist {
+      font-family: var(--mono);
+      font-size: 8px;
+      color: var(--text-dim);
+      letter-spacing: 1px
+    }
+
+    .mp-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .mp-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      color: var(--lime);
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .2s;
+      flex-shrink: 0
+    }
+
+    .mp-btn:hover {
+      background: var(--border-hi);
+      border-color: var(--lime);
+      color: var(--bg)
+    }
+
+    .mp-vol {
+      width: 56px;
+      height: 3px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer
+    }
+
+    .mp-vol::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--amber);
+      box-shadow: 0 0 6px var(--amber-glow);
+      cursor: pointer
+    }
+
+    .mp-loading {
+      font-family: var(--mono);
+      font-size: 8px;
+      color: var(--text-muted);
+      letter-spacing: 1px
+    }
+
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 24px;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 2px
+    }
+  </style>
+</head>
+
+<body>
+  <div class="scanlines"></div>
+
+  <nav>
+    <div class="nav-logo">⬡ WUMPUS</div>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#howto">How To Play</a></li>
+      <li><a href="index.html">Launch Game →</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-badge">AI ASSIGNMENT · PROPOSITIONAL LOGIC AGENT</div>
+    <div class="hero-hex">
+      <svg viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="45,4 80,24 80,66 45,86 10,66 10,24" stroke="#ffb300" stroke-width="1.5" fill="none"
+          opacity="0.8" />
+        <polygon points="45,12 73,28 73,62 45,78 17,62 17,28" stroke="#a8ff3e" stroke-width="0.8" fill="none"
+          opacity="0.4" />
+      </svg>
+      <span class="hero-hex-inner">🧠</span>
+    </div>
+    <h1 class="hero-title">WUMPUS<br>LOGIC AGENT</h1>
+    <p class="hero-sub">PROPOSITIONAL LOGIC · CNF RESOLUTION REFUTATION · KNOWLEDGE BASE INFERENCE</p>
+    <a class="btn-launch" href="index.html" id="launch-btn">
+      <span>⚡ LAUNCH MISSION</span>
+    </a>
+    <div class="hero-scroll">
+      <div class="hero-scroll-line"></div>
+      <span>SCROLL TO EXPLORE</span>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="section" id="features">
+    <div class="section-title">CORE SYSTEMS</div>
+    <div class="section-divider"></div>
+    <div class="features-grid">
+      <div class="feat-card">
+        <div class="feat-icon">🧠</div>
+        <div class="feat-title">KB INFERENCE</div>
+        <p class="feat-desc">A real propositional logic Knowledge Base grows with every step. The agent builds clauses
+          and uses CNF resolution refutation to prove cells safe.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🔬</div>
+        <div class="feat-title">CNF RESOLUTION</div>
+        <p class="feat-desc">Full resolution refutation engine derives contradictions step-by-step. Every inference is
+          logged in real-time so you can follow the reasoning chain.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🗺</div>
+        <div class="feat-title">DYNAMIC WORLD</div>
+        <p class="feat-desc">Configurable grid (3–8 × 3–8), randomised pits, Wumpus placement, and gold. The agent
+          perceives Breezes, Stenches, and Glitter as clues.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🤖</div>
+        <div class="feat-title">AUTO-NAVIGATE</div>
+        <p class="feat-desc">Press Auto Step and watch the agent select only KB-proven safe moves. After grabbing gold,
+          it BFS path-finds its way back to start automatically.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🔊</div>
+        <div class="feat-title">SPATIAL AUDIO</div>
+        <p class="feat-desc">Procedural ambient soundscape with heartbeat pulses, danger alerts, triumphant gold
+          fanfares, and an epic win celebration — all synthesised live.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📊</div>
+        <div class="feat-title">LIVE METRICS</div>
+        <p class="feat-desc">Track score, moves, KB clause count, and total inference steps in real time. See exactly
+          how much work the logic engine did to keep the agent alive.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW TO PLAY -->
+  <section class="section" id="howto">
+    <div class="section-title">HOW TO PLAY</div>
+    <div class="section-divider"></div>
+    <div class="howto-grid">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <div class="step-title">Configure & Launch</div>
+          <p class="step-desc">Set grid size and pit count with the sliders, then press <strong>⚡ Launch New
+              Mission</strong> to deploy the agent at (0,0).</p>
+        </div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <div class="step-title">Navigate Safely</div>
+          <p class="step-desc">Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or Arrow keys. Safe cells glow
+            green; uncertain cells pulse red. Click adjacent cells to move.</p>
+        </div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <div class="step-title">Read Percepts</div>
+          <p class="step-desc">🌬 Breeze = pit nearby. 😷 Stench = Wumpus nearby. ✨ Glitter = gold here! Use these to
+            build the KB and prove cells safe.</p>
+        </div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">04</div>
+        <div class="step-body">
+          <div class="step-title">Grab the Gold</div>
+          <p class="step-desc">When you see Glitter, press <kbd>G</kbd> or <strong>💰 Grab Gold</strong>. The agent will
+            automatically return to base and you win!</p>
+        </div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">05</div>
+        <div class="step-body">
+          <div class="step-title">Use Auto Step</div>
+          <p class="step-desc">Let the AI take over — it picks only KB-proven safe moves. Watch the Resolution Steps
+            panel to follow the logic in real time.</p>
+        </div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">06</div>
+        <div class="step-body">
+          <div class="step-title">Reveal the World</div>
+          <p class="step-desc">Press <strong>👁 Reveal</strong> to see all pit and Wumpus positions overlaid on the grid
+            — useful for debugging or showing the full world.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <div class="cta-title">READY TO <span>SURVIVE?</span></div>
+    <p class="cta-sub">DEPLOY YOUR AGENT · PROVE SAFETY · SECURE THE GOLD</p>
+    <a class="btn-launch" href="index.html" id="launch-btn2">
+      <span>⚡ START MISSION</span>
+    </a>
+    <div id="server-status"><span id="server-dot"></span><span id="server-text">Checking server...</span></div>
+  </section>
+
+  <footer>WUMPUS LOGIC AGENT · PROPOSITIONAL LOGIC · AI ASSIGNMENT · ALL SOUNDS PROCEDURALLY GENERATED</footer>
+
+  <script>
+    // Detect Flask vs file/live-server and set correct hrefs
+    const onFlask = window.location.port === '5000';
+    if (onFlask) {
+      document.getElementById('launch-btn').href = '/game';
+      document.getElementById('launch-btn2').href = '/game';
+    }
+
+    // Server status ping
+    async function pingServer() {
+      const dot = document.getElementById('server-dot');
+      const text = document.getElementById('server-text');
+      const base = onFlask ? '' : 'http://127.0.0.1:5000';
+      try {
+        const r = await fetch(base + '/api/state/default', { method: 'GET', signal: AbortSignal.timeout(3000) });
+        if (r.ok || r.status === 404) {
+          dot.className = 'ok';
+          text.textContent = 'Python server online at port 5000 ✓';
+        } else { throw new Error(); }
+      } catch {
+        dot.className = 'err';
+        text.textContent = 'Server offline — run start_server.bat first!';
+      }
+    }
+    pingServer();
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+
+    // Subtle card entrance animation on scroll
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(en => {
+        if (en.isIntersecting) {
+          en.target.style.opacity = '1';
+          en.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.feat-card, .step-card').forEach(el => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(24px)';
+      el.style.transition = 'opacity .5s ease, transform .5s ease';
+      observer.observe(el);
+    });
